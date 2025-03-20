@@ -13,6 +13,7 @@ class LogisticRegressionEP34():
         self.l_grad_b = None    # η παράγωγος της απώλειας ως προς το b
         self.N = None           # το πλήθος των δεδομένων N με τα οποία εκπαιδεύτηκε το μοντέλο
         self.p = None           # η διάσταση p του χώρου των χαρακτηριστικών
+        self.batch_size = None
 
 
     def init_parameters(self):
@@ -59,8 +60,8 @@ class LogisticRegressionEP34():
         errors = y - predictions
 
         # Step 3: Compute gradients without looping
-        self.l_grad_w = - (X.T @ errors) / self.N
-        self.l_grad_b = - np.sum(errors) / self.N
+        self.l_grad_w = - (X.T @ errors) / self.batch_size
+        self.l_grad_b = - np.sum(errors) / self.batch_size
 
         # Return the result (no need to since we save them)
         # return self.l_grad_w, self.l_grad_b
@@ -80,6 +81,7 @@ class LogisticRegressionEP34():
         # 2) Initialize parameters based on the number of features (columns) in X
         self.N = X.shape[0]
         self.p = X.shape[1]
+        self.batch_size = batch_size or self.N
         self.init_parameters()
 
         # 3) Randomly shuffle the data
@@ -93,8 +95,19 @@ class LogisticRegressionEP34():
             if batch_size is None:
                 X_batch, y_batch = X, y
             else:
-                batch_indices = np.arange((iteration * batch_size) % self.N, ((iteration + 1) * batch_size) % self.N)
+                start = (iteration * batch_size) % self.N
+                end = (start + batch_size) % self.N
+
+                # Handle the case where the batch wraps around the array
+                if start < end:
+                    batch_indices = np.arange(start, end)
+                else:
+                    # Wrap around: first part goes from start to the end of X, then from the beginning to the end
+                    batch_indices = np.concatenate([np.arange(start, self.N), np.arange(0, end)])
                 X_batch, y_batch = X[batch_indices], y[batch_indices]
+                # print(batch_indices)
+                # if len(batch_indices) == 0:
+                #     print("Empty batch created!")
 
             # 5) Forward, backward, and gradient descent steps
             self.forward(X_batch)
